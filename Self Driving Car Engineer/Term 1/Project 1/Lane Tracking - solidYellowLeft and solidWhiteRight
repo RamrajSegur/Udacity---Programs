@@ -1,0 +1,63 @@
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import numpy as np
+import cv2
+from moviepy.editor import VideoFileClip
+%matplotlib inline
+cap = cv2.VideoCapture('solidYellowLeft.mp4')
+# convert the image to grayscale
+yrl1=0
+yrr1=0
+yrr=0
+yrl=0
+fourcc = cv2.VideoWriter_fourcc(*'XVID')
+out = cv2.VideoWriter('result_solidYellowLeft.avi',fourcc, 30.0, (960,540))
+while(cap.isOpened()):
+    ret, frame=cap.read()
+    if (ret==True):
+        gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        imshape = gray.shape[:2]
+        blurred=cv2.GaussianBlur(gray,(3,3),0)
+        edges = cv2.Canny(blurred,50,150)
+        vertices = np.array([[(0,imshape[0]),((imshape[1]/2)-5, ((imshape[0]/2)+50) ),(((imshape[1]/2)+5),((imshape[0]/2)+50)), (imshape[1],imshape[0])]], dtype=np.int32)
+        mask=np.zeros_like(edges)
+        cv2.fillPoly(mask, vertices, 255)
+        masked_edges = cv2.bitwise_and(edges, mask)
+        lines=cv2.HoughLinesP(masked_edges,7,np.pi/180*2,100,80,50)
+#         cv2.imshow('Lines',lines)
+        yr=np.array([0.0,0.0])
+        if (lines is None):
+            lines=lines1
+        canvas=np.copy(frame)*0
+        for line in lines:
+            for x1,y1,x2,y2 in line:
+                x=([x1,x2])
+                y=([y1,y2])
+                xl=[0,440]
+                xr=[520,960]
+                [m1,b]=np.polyfit(x,y,1)
+                if m1<0:
+                    yrr=int(m1*xl[0]+b)
+                    yrl=int(m1*xl[1]+b)
+                   
+                if m1>0:
+                    yrr1=int(m1*xr[0]+b)
+                    yrl1=int(m1*xr[1]+b)
+                    
+                cv2.line(canvas,(xl[0],yrr),(xl[1],yrl),(0,0,255),25)
+                cv2.line(canvas,(xr[0],yrr1),(xr[1],yrl1),(0,0,255),25)
+        lines_edges = cv2.addWeighted(frame, 0.8, canvas, 1, 0)
+        cv2.imshow('Lined_Edges',lines_edges)
+        out.write(lines_edges)
+        lines1=lines
+        if cv2.waitKey(25) & 0xFF == ord('q'):
+              break
+ 
+  # Break the loop
+    else: 
+        break
+ 
+# When everything done, release the video capture object
+cap.release()
+out.release()
+cv2.destroyAllWindows()
